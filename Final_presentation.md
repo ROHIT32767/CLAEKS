@@ -5,7 +5,7 @@ Although it has many attributes , there are 2 main important attributes in its s
 
 Lets start with the "actions" attribute
 
-"actions" attribute is a list of actions , where each action contains a name , instanceName along with input and output attributes. Each input has a name and value
+"actions" attribute is a list of actions , where each action contains a name along with input and output attributes. Each input has a name and value
 
 # HRS Workflow File structure - Links
 
@@ -13,12 +13,22 @@ Another important attribute is the "links" attribute
 
 "links" attribute is a list of links , where each link contains reference to its source and target action and the condition under which the link is executed.
 
+
 While analysing the structure of a HRS Workflow file , we found out that most of the attributes are boilerplate code that dont actually contribute to the execution of the workflow. There are also attributes that can be modelled from "actions" and "links" attributes.
 
-# Experiments
 
-We started with experimenting to create a HRS Workflow file from resolution steps
 
+# Tokens
+Throughout most of my internship duration , I didnt have access to Gemini 1.5 pro as it was a recent release.
+
+# Approach - I
+We then provide examples of input resolution steps along with corresponding example outputs in Alternative representation format. After several such examples, we present a new input and expect the output workflow for it.
+
+# Approach-II
+We then provide the LLM with an output summary in which explain the LLM as to how exactly it has to structure the Output format from the information in resolution steps
+
+# Script
+You might be wondering how we convert the Alternative representation to a HRS Workflow file
 
 # Detailed Demo
 Snehil , could you please share your screen once again
@@ -26,7 +36,6 @@ Snehil , could you please share your screen once again
 We have used Gemini 1.5 pro for the demonstration
 
 We start with the User input , the user input contains steps to resolve an autosys alert by checking the status of the autosys job and notifying the user accordingly.
-
 We perform few shot prompting on the user input and generate the resolution steps.
 
 Snehil could you please run the prompt
@@ -36,7 +45,7 @@ We use Approach II to convert the resolution steps to the Alternative representa
 Lets understand the prompt now
 
 We start with giving an overview of actions , links , inputs and outputs in HRS workflow.
-Then we continue by providing the Action summary of Top 60 actions
+Then we continue by providing the Action summary of Top 60 actions=
 Each Action in the Action summary consists of its description and the summary of input and output attributes.
 
 We then provide the list of all global variables as context.
@@ -69,11 +78,11 @@ Now that we have seen a detailed demo , lets discuss regarding the complexities 
 # CONSTANT
 Firstly we experimented on using CONSTANT variable types in the workflow.
 
-A CONSTANT variable is when a user assigns a value to a variable and that value remains constant throughout the workflow.
+A variable is assigned the type "CONSTANT" when a user assigns a value to a variable and that value is a constant.
 
-We explain in the output summary of the prompt that it has to assign a variable the type "CONSTANT" if the value assigned is a constant.
+We explain in the output summary of the prompt that LLM has to assign a variable the type "CONSTANT" if the value assigned is a constant.
 
-For example, In the given workflow the Timer action has an input attribute called "minutes" which is set to the value 5. If we look at step 4 in the resolution steps,
+For example, In the given workflow the Timer action has an input attribute called "minutes" which is set to the value 10. If we look at step 4 in the resolution steps,
 
 "Upon success in step 2 , snooze the workflow for a specific duration given time in minutes. Inputs = [minutes="10"]"
 
@@ -98,7 +107,7 @@ From the resolution steps , the LLM identifies that the value "ContextData_Alert
 # ACTION
 Further we experimented on handling ACTION variable types in the workflow.
 
-An ACTION variable is when a user assigns a value to a variable and that value is derived from the output of another action in the workflow.
+A variable is assigned the type "ACTION" when a user assigns a value to a variable and that value is derived from the input/output of another action in the workflow.
 
 We explain in the output summary that the LLM has to assign a variable the type "ACTION" if the values are derived from another resolution step
 
@@ -154,6 +163,81 @@ Application of Deep Learning Concepts in Real Projects: Applied deep learning co
 # Acknowledgements
 
 
+
+
+Format
+
+{
+"actions":[
+"action1":{"inputVariables":{"input_name":{"value":value1,"type":"type1"}}}]
+
+"links":[
+{
+"sourceRef" : "source_action_name",
+"targetRef" : "target_action_name",
+"condition": conditionExpression
+}]
+}
+
+### Explanation of Variable Types
+
+1. **GLOBAL**: Variables assigned the type "GLOBAL" are those whose values are part of a predefined list of global variables.
+2. **CONSTANT**: Variables assigned the type "CONSTANT" are those with fixed values that do not change and are not derived from any other step or logic.
+3. **ACTION**: Variables assigned the type "ACTION" are those whose values are derived directly from the output of another action or resolution step.
+4. **FILTER**: Variables assigned the type "FILTER" are those whose values are derived using a logic or script. For example, if a variable's value is calculated using another variable (e.g., `minutes` being calculated as `seconds * 60`), or if a variable's value is decided based on a more complex logic that is neither constant, global, nor directly derived from another action.
+
+### Identifying FILTER Variables
+
+To identify "FILTER" variables, follow these steps:
+
+- Check if the variable's value is assigned through a script or logic.
+- If the variable's value is calculated based on other variables (e.g., arithmetic operations, logical conditions), it should be assigned the type "FILTER".
+- If a variable's value does not fit into the "GLOBAL", "CONSTANT", or "ACTION" types, and involves some form of processing or computation, it should be considered a "FILTER" type.
+
+### Example
+
+Given the following workflow actions and variables:
+
+```json
+{
+  "actions": [
+    {
+      "calculateTime": {
+        "inputVariables": {
+          "seconds": {"value": "3600", "type": "CONSTANT"},
+          "minutes": {"value": "seconds * 60", "type": "FILTER"}
+        }
+      }
+    },
+    {
+      "checkThreshold": {
+        "inputVariables": {
+          "threshold": {"value": "globalThreshold", "type": "GLOBAL"},
+          "currentLoad": {"value": "previousLoad + currentIncrement", "type": "FILTER"}
+        }
+      }
+    },
+    {
+      "setStatus": {
+        "inputVariables": {
+          "status": {"value": "active", "type": "CONSTANT"}
+        }
+      }
+    }
+  ],
+  "links": [
+    {
+      "sourceRef": "calculateTime",
+      "targetRef": "checkThreshold",
+      "condition": "success"
+    },
+    {
+      "sourceRef": "checkThreshold",
+      "targetRef": "setStatus",
+      "condition": "success"
+    }
+  ]
+}
 
 
 
